@@ -1,16 +1,20 @@
 {
   "name": "tree-sitter-smelly",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Tree-sitter grammar for the Smelly programming language",
+  "main": "bindings/node",
+  "keywords": ["tree-sitter", "parser", "smelly"],
+  "author": "netmask",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "tree-sitter-cli": "^0.26.6"
-  }
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.smelly",
+      "file-types": ["sy"],
+      "highlights": "queries/highlights.scm"
+    }
+  ]
 }
