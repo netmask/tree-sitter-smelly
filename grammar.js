@@ -10,17 +10,17 @@ module.exports = grammar({
   conflicts: $ => [
     [$.arg_list, $.paren_expr],
     [$.binary_expr, $.lambda],
-    [$.pattern, $.primary],
+    [$._pattern, $._primary],
     [$.array_pattern, $.list_literal],
     [$.map_pattern, $.map_literal],
-    [$.arm_expr, $.expr],
-    [$.block_call, $.primary],
+    [$._arm_expr, $._expr],
+    [$.block_call, $._primary],
   ],
 
   rules: {
-    program: $ => repeat($.stmt),
+    program: $ => repeat($._stmt),
 
-    stmt: $ => choice(
+    _stmt: $ => choice(
       $.module_decl,
       $.import_stmt,
       $.macro_def,
@@ -61,7 +61,7 @@ module.exports = grammar({
       '(',
       optional($.param_list),
       ')',
-      optional(seq('->', field('return_type', $.type))),
+      optional(seq('->', field('return_type', $._type))),
     ),
 
     // fn add(a: i32, b: i32) -> i32 = ... end
@@ -71,7 +71,7 @@ module.exports = grammar({
       '(',
       optional($.param_list),
       ')',
-      optional(seq('->', field('return_type', $.type))),
+      optional(seq('->', field('return_type', $._type))),
       '=',
       field('body', $.block),
       'end',
@@ -81,9 +81,9 @@ module.exports = grammar({
     const_decl: $ => seq(
       'const',
       field('name', $.identifier),
-      optional(seq(':', field('type', $.type))),
+      optional(seq(':', field('type', $._type))),
       '=',
-      field('value', $.expr),
+      field('value', $._expr),
     ),
 
     // region pool = ... end
@@ -98,7 +98,7 @@ module.exports = grammar({
     // if cond then ... else ... end
     if_stmt: $ => seq(
       'if',
-      field('condition', $.expr),
+      field('condition', $._expr),
       'then',
       field('then', $.block),
       optional(seq('else', field('else', $.block))),
@@ -108,7 +108,7 @@ module.exports = grammar({
     // while cond do ... end
     while_stmt: $ => seq(
       'while',
-      field('condition', $.expr),
+      field('condition', $._expr),
       'do',
       field('body', $.block),
       'end',
@@ -117,29 +117,29 @@ module.exports = grammar({
     // match value ... end
     match_stmt: $ => seq(
       'match',
-      field('value', $.expr),
+      field('value', $._expr),
       repeat1($.match_arm),
       'end',
     ),
 
     match_arm: $ => seq(
-      field('pattern', $.pattern),
+      field('pattern', $._pattern),
       '->',
-      field('body', $.arm_expr),
+      field('body', $._arm_expr),
     ),
 
     // Like expr but without index_expr at top level, so [pattern] on the
     // next line doesn't get consumed as an index on this arm's body
-    arm_expr: $ => choice(
+    _arm_expr: $ => choice(
       $.binary_expr,
       $.unary_expr,
       $.call_expr,
       $.field_expr,
       $.method_expr,
-      $.primary,
+      $._primary,
     ),
 
-    pattern: $ => choice(
+    _pattern: $ => choice(
       $.type_pattern,
       $.integer,
       $.float,
@@ -160,7 +160,7 @@ module.exports = grammar({
 
     array_pattern: $ => seq(
       '[',
-      optional(seq($.pattern, repeat(seq(',', $.pattern)))),
+      optional(seq($._pattern, repeat(seq(',', $._pattern)))),
       ']',
     ),
 
@@ -173,13 +173,13 @@ module.exports = grammar({
     map_pattern_entry: $ => seq(
       field('key', $.identifier),
       ':',
-      field('value', $.pattern),
+      field('value', $._pattern),
     ),
 
     // Generic block macro call: name arg = ... end  OR  name(args) = ... end
     block_call: $ => seq(
       field('name', $.identifier),
-      field('arg', $.expr),
+      field('arg', $._expr),
       '=',
       field('body', $.block),
       'end',
@@ -189,25 +189,25 @@ module.exports = grammar({
     assign_stmt: $ => prec.right(seq(
       field('name', $.identifier),
       '=',
-      field('value', $.expr),
+      field('value', $._expr),
     )),
 
     // expression as statement
-    expr_stmt: $ => $.expr,
+    expr_stmt: $ => $._expr,
 
-    block: $ => repeat1($.stmt),
+    block: $ => repeat1($._stmt),
 
     param_list: $ => seq($.param, repeat(seq(',', $.param))),
-    param: $ => seq(field('name', $.identifier), ':', field('type', $.type)),
+    param: $ => seq(field('name', $.identifier), ':', field('type', $._type)),
 
     // Types
-    type: $ => choice(
+    _type: $ => choice(
       $.ref_type,
       $.primitive_type,
       $.named_type,
     ),
 
-    ref_type: $ => seq('&', $.type),
+    ref_type: $ => seq('&', $._type),
 
     primitive_type: $ => choice(
       'i8', 'i16', 'i32', 'i64', 'i128',
@@ -217,17 +217,17 @@ module.exports = grammar({
 
     named_type: $ => prec.left(seq(
       $.identifier,
-      optional(seq('[', $.type, repeat(seq(',', $.type)), ']')),
+      optional(seq('[', $._type, repeat(seq(',', $._type)), ']')),
     )),
 
     // Expressions with precedence
     // yield expr (inside generators) - lowest precedence
-    yield_expr: $ => prec.right(-1, seq('yield', $.expr)),
+    yield_expr: $ => prec.right(-1, seq('yield', $._expr)),
 
     // receive as expression (for use in assignments)
     receive_expr: $ => seq('receive', repeat1($.match_arm), 'end'),
 
-    expr: $ => choice(
+    _expr: $ => choice(
       $.yield_expr,
       $.receive_expr,
       $.binary_expr,
@@ -236,51 +236,51 @@ module.exports = grammar({
       $.index_expr,
       $.field_expr,
       $.method_expr,
-      $.primary,
+      $._primary,
     ),
 
     binary_expr: $ => choice(
-      prec.left(0, seq($.expr, '|>', $.expr)),
-      prec.left(1, seq($.expr, '==', $.expr)),
-      prec.left(1, seq($.expr, '!=', $.expr)),
-      prec.left(1, seq($.expr, '<', $.expr)),
-      prec.left(1, seq($.expr, '<=', $.expr)),
-      prec.left(1, seq($.expr, '>', $.expr)),
-      prec.left(1, seq($.expr, '>=', $.expr)),
-      prec.left(2, seq($.expr, '+', $.expr)),
-      prec.left(2, seq($.expr, '-', $.expr)),
-      prec.left(3, seq($.expr, '*', $.expr)),
-      prec.left(3, seq($.expr, '/', $.expr)),
-      prec.left(3, seq($.expr, '%', $.expr)),
+      prec.left(0, seq($._expr, '|>', $._expr)),
+      prec.left(1, seq($._expr, '==', $._expr)),
+      prec.left(1, seq($._expr, '!=', $._expr)),
+      prec.left(1, seq($._expr, '<', $._expr)),
+      prec.left(1, seq($._expr, '<=', $._expr)),
+      prec.left(1, seq($._expr, '>', $._expr)),
+      prec.left(1, seq($._expr, '>=', $._expr)),
+      prec.left(2, seq($._expr, '+', $._expr)),
+      prec.left(2, seq($._expr, '-', $._expr)),
+      prec.left(3, seq($._expr, '*', $._expr)),
+      prec.left(3, seq($._expr, '/', $._expr)),
+      prec.left(3, seq($._expr, '%', $._expr)),
     ),
 
     unary_expr: $ => choice(
-      prec(4, seq('-', $.expr)),
-      prec(4, seq('&', $.expr)),
+      prec(4, seq('-', $._expr)),
+      prec(4, seq('&', $._expr)),
     ),
 
     call_expr: $ => prec(5, seq(
-      field('callee', $.expr),
+      field('callee', $._expr),
       '(',
       optional($.arg_list),
       ')',
     )),
 
     index_expr: $ => prec(5, seq(
-      field('object', $.expr),
+      field('object', $._expr),
       '[',
-      field('index', $.expr),
+      field('index', $._expr),
       ']',
     )),
 
     field_expr: $ => prec(5, seq(
-      field('object', $.expr),
+      field('object', $._expr),
       '.',
       field('field', $.identifier),
     )),
 
     method_expr: $ => prec(6, seq(
-      field('object', $.expr),
+      field('object', $._expr),
       '.',
       field('method', $.identifier),
       '(',
@@ -288,9 +288,9 @@ module.exports = grammar({
       ')',
     )),
 
-    arg_list: $ => seq($.expr, repeat(seq(',', $.expr))),
+    arg_list: $ => seq($._expr, repeat(seq(',', $._expr))),
 
-    primary: $ => choice(
+    _primary: $ => choice(
       $.integer,
       $.float,
       $.string,
@@ -303,11 +303,11 @@ module.exports = grammar({
       $.lambda,
     ),
 
-    paren_expr: $ => seq('(', $.expr, ')'),
+    paren_expr: $ => seq('(', $._expr, ')'),
 
     list_literal: $ => seq(
       '[',
-      optional(seq($.expr, repeat(seq(',', $.expr)))),
+      optional(seq($._expr, repeat(seq(',', $._expr)))),
       ']',
     ),
 
@@ -320,7 +320,7 @@ module.exports = grammar({
     map_entry: $ => seq(
       field('key', $.identifier),
       ':',
-      field('value', $.expr),
+      field('value', $._expr),
     ),
 
     // macro assert_eq(a, b) = if a != b ... end end
@@ -339,7 +339,7 @@ module.exports = grammar({
 
     lambda: $ => choice(
       // |params| expr
-      seq('|', optional($.param_list), '|', $.expr),
+      seq('|', optional($.param_list), '|', $._expr),
       // do |params| ... end
       seq('do', '|', optional($.param_list), '|', $.block, 'end'),
     ),
